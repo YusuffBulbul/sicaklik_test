@@ -1,32 +1,23 @@
-from flask import Flask, jsonify
-from jtop import jtop
+import time
 from datetime import datetime
+from jtop import jtop
 
-app = Flask(__name__)
 log_file = "tum_sicakliklar_kaydi.txt"
 
-def oku_sicaklik():
-    veri = {}
-    now = datetime.now().strftime("%H:%M:%S")
-    veri["Zaman"] = now
+with jtop() as jetson:
+    while jetson.ok():
+        now = datetime.now().strftime("%H:%M:%S")
+        log_lines = [f"Zaman: {now}"]
 
-    with jtop() as jetson:
-        if jetson.ok():
-            for key, value in jetson.stats.items():
-                if "Temp" in key:
-                    veri[key] = f"{value} °C"
+        for key, value in jetson.stats.items():
+            if "Temp" in key:
+                log_lines.append(f"{key}: {value} °C")
 
-    # Dosyaya yaz
-    log_line = " | ".join([f"{k}: {v}" for k, v in veri.items()]) + "\n"
-    with open(log_file, "a") as f:
-        f.write(log_line)
+        log_entry = " | ".join(log_lines) + "\n"
 
-    return veri
+        # Dosyaya yaz
+        with open(log_file, "a") as f:
+            f.write(log_entry)
 
-@app.route('/sicaklik', methods=['GET'])
-def sicaklik_endpoint():
-    veri = oku_sicaklik()
-    return jsonify(veri)
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+        print(log_entry.strip())
+        time.sleep(5)
